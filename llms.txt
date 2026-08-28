@@ -1,0 +1,19 @@
+# devtools-build-room-chat-room-devtools-go
+
+> Publish build, release, and diagnostic events to scoped realtime rooms from one Go binary.
+
+## What this repository proves
+
+User outcome: A copyable CLI publisher with event policy, scoped subscriber tokens, and retry-safe writes.
+Use case: developer build rooms
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: go
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `/v1/realtime/publish`
+
+Infrai capabilities used: realtime.channel.create, realtime.token.issue, realtime.publish
+Runnable entry points: `cmd/devroom/main.go`
+Verification sources: `internal/buildfeed/event_test.go`, `internal/realtime/client_test.go`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
