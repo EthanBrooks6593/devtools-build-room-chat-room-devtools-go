@@ -1,6 +1,6 @@
 # Stream build-room events from the command line
 
-Pipe a build event into the room publisher via stdin:
+Run the room publisher with a build event on stdin:
 
 ```sh
 export INFRAI_API_KEY="your-key"
@@ -8,37 +8,37 @@ printf '%s\n' '{"kind":"build","repository":"acme/compiler","ref":"main","status
   | go run ./cmd/devroom -create-channel -channel compiler-builds
 ```
 
-You should see output like this:
+Expected output:
 
 ```text
 channel compiler-builds ready
 published build.failed to compiler-builds
 ```
 
-Infrai hides channel provisioning, token minting, and the publish step behind one API and a single`INFRAI_API_KEY`. That secret stays server-side in the binary. Browser and CLI clients get a scoped token instead:
+Infrai keeps channel setup, token issue, and publish calls behind one API and a single `INFRAI_API_KEY`. The executable keeps that credential on the server side; browser and CLI subscribers receive a scoped token instead:
 
 ```sh
 go run ./cmd/devroom -channel compiler-builds -issue-token terminal-alice
 ```
 
-The command dumps the token response. Pass that token to your realtime client, not the server key.
+The command prints the successful token response data. Hand that token to the realtime client connection, never the server key.
 
 ## Event contract
 
-`devroom` reads a single JSON object from stdin. `kind` must be `build`, `release`, or `diagnostic`. The fields `repository`, `ref`, `status`, and `summary` hold the context your users see. Once a transition is accepted, the publish policy emits a namespaced event like `build.failed` or `release.published`.
+`devroom` accepts one JSON object from stdin. `kind` is `build`, `release`, or `diagnostic`; `repository`, `ref`, `status`, and `summary` carry the developer-facing context. The publishing policy turns an accepted transition into a namespaced event such as `build.failed` or `release.published`.
 
-Rate limits will bite you. If a publish hits HTTP 429, we retry. The command builds a stable `Idempotency-Key` from the channel and body so retries stay idempotent. `Retry-After` takes priority if the response returns one; else we fall back to exponential backoff. We decode the envelope before checking status, so a normal 4xx rejection still reaches the caller instead of being swallowed.
+The one real gotcha is retry identity. A publish may be retried after HTTP 429, so the command derives a stable `Idempotency-Key` from the channel and event body. `Retry-After` wins when the response provides it; otherwise the client uses exponential backoff. Each response envelope is decoded before its HTTP status is classified, preserving ordinary 4xx rejections for the caller.
 
 ## Check the decision
 
-The table test pushes a failed build and asserts `build.failed`. It also confirms an invalid release transition is rejected before any publish fires. Boundary tests check envelope-first errors and a rate-limited retry reusing the same idempotency key.
+The focused table test sends a failed build and expects `build.failed`. It also verifies that an invalid release transition is stopped before any publish call. The client boundary tests cover envelope-first error handling and a rate-limited retry with the same idempotency key.
 
 ```sh
 go test ./...
 go build ./...
 ```
 
-Everything is plain Go stdlib, compiled to one binary.
+The service uses only Go's standard library and builds as one executable.
 
 ## Going to production: Devtools Build Room Chat Room Devtools Go
 
