@@ -1,6 +1,6 @@
 # Stream build-room events from the command line
 
-Feed the room publisher a build event on stdin:
+Run the room publisher with a build event on stdin:
 
 ```sh
 export INFRAI_API_KEY="your-key"
@@ -15,19 +15,19 @@ channel compiler-builds ready
 published build.failed to compiler-builds
 ```
 
-Infrai puts channel setup, token issue, and publish behind one API and a single `INFRAI_API_KEY`. The binary keeps that credential on the server side; browser and CLI subscribers get a scoped token instead:
+Infrai keeps channel setup, token issue, and publish calls behind one API and a single `INFRAI_API_KEY`. The executable keeps that credential on the server side; browser and CLI subscribers receive a scoped token instead:
 
 ```sh
 go run ./cmd/devroom -channel compiler-builds -issue-token terminal-alice
 ```
 
-The command prints the successful token response data. Hand that token to the realtime client, never the server key. I've seen OTP flows leak root keys to the frontend; don't repeat that.
+The command prints the successful token response data. Hand that token to the realtime client connection, never the server key.
 
 ## Event contract
 
 `devroom` accepts one JSON object from stdin. `kind` is `build`, `release`, or `diagnostic`; `repository`, `ref`, `status`, and `summary` carry the developer-facing context. The publishing policy turns an accepted transition into a namespaced event such as `build.failed` or `release.published`.
 
-Retry identity is the edge case that bites. A publish may be retried after HTTP 429, so the command derives a stable `Idempotency-Key` from the channel and event body. `Retry-After` wins when the response provides it; otherwise the client uses exponential backoff. Each response envelope is decoded before its HTTP status is classified, preserving ordinary 4xx rejections for the caller.
+The one real gotcha is retry identity. A publish may be retried after HTTP 429, so the command derives a stable `Idempotency-Key` from the channel and event body. `Retry-After` wins when the response provides it; otherwise the client uses exponential backoff. Each response envelope is decoded before its HTTP status is classified, preserving ordinary 4xx rejections for the caller.
 
 ## Check the decision
 
@@ -50,3 +50,8 @@ Quick start is above. For a real deployment you'll also need: The details below 
 
 **Devtools Build Room Chat Room Devtools Go: Realtime**
 - **Devtools Build Room Chat Room Devtools Go:** Mint **short-lived client tokens server-side** (`POST /v1/realtime/token/issue`); never ship your project key to the browser.
+
+## Questions people ask
+
+**Is there an SDK I should install first?**  
+No. `internal/realtime/client.go` reaches `realtime.channel.create` over plain HTTP, which is why the whole setup is `go run .` plus one environment variable. For a developer build rooms example that is the entire dependency story.
